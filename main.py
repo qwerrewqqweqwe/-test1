@@ -7,9 +7,7 @@ import requests
 import warnings
 from datetime import datetime
 from bs4 import BeautifulSoup
-from sqlalchemy import Column, Integer, String, Text, DateTime, select
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import declarative_base, sessionmaker
+# No database needed
 from groq import AsyncGroq
 from aiogram import Bot, Dispatcher, Router, F
 from aiogram.types import Message, CallbackQuery, InlineKeyboardButton
@@ -28,40 +26,25 @@ DATABASE_URL = "sqlite+aiosqlite:///court_bot.db"
 logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s")
 logger = logging.getLogger(__name__)
 
-Base = declarative_base()
-
-class SearchHistory(Base):
-    __tablename__ = "search_history"
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(Integer, index=True)
-    query = Column(String(500))
-    query_type = Column(String(50))
-    result_count = Column(Integer, default=0)
-    created_at = Column(DateTime, default=datetime.utcnow)
-
-engine = create_async_engine(DATABASE_URL, echo=False)
-AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+# Simple in-memory history
+search_history = {}
 
 async def init_db():
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    print("База даних готова")
+    print("Ready")
 
 async def save_history(user_id, query, query_type):
-    async with AsyncSessionLocal() as db:
-        h = SearchHistory(user_id=user_id, query=query, query_type=query_type, result_count=1)
-        db.add(h)
-        await db.commit()
+    if user_id not in search_history:
+        search_history[user_id] = []
+    search_history[user_id].append({
+        "query": query,
+        "type": query_type,
+        "time": datetime.utcnow()
+    })
+    if len(search_history[user_id]) > 20:
+        search_history[user_id] = search_history[user_id][-20:]
 
 async def get_history(user_id, limit=10):
-    async with AsyncSessionLocal() as db:
-        result = await db.execute(
-            select(SearchHistory)
-            .where(SearchHistory.user_id == user_id)
-            .order_by(SearchHistory.created_at.desc())
-            .limit(limit)
-        )
-        return result.scalars().all()
+    return search_history.get(user_id, [])[-limit:]
 
 class ReyestrParser:
     BASE_URL = 'https://reyestr.court.gov.ua'

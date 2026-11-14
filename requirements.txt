@@ -1,9 +1,6 @@
 aiogram==3.13.0
 groq
-sqlalchemy[asyncio]
-aiosqlite
 aiohttp
-greenlet
 python-dotenv
 requests
 beautifulsoup4
