@@ -1,0 +1,14 @@
+app = "court-bot"
+primary_region = "ams"
+
+[build]
+
+[env]
+
+[[vm]]
+  memory = "256mb"
+  cpu_kind = "shared"
+  cpus = 1
+
+[processes]
+  worker = "python main.py"
